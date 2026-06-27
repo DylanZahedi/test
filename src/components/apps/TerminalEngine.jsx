@@ -40,7 +40,7 @@ const TerminalEngine = ({ startFlow }) => {
         
         setTimeout(() => {
           const fullName = firstName + " " + val;
-          const issueUrl = `https://github.com/Galaxy-sc/test2/issues/new?title=Cert Request: Generate My Certificate&body=${encodeURIComponent(`لطفا مدرک مشارکت من در پروژه‌های OWASP را صادر کنید.\n\nFullName: ${fullName}`)}`;
+          const issueUrl = `https://github.com/DylanZahedi/test2/issues/new?title=Cert Request: Generate My Certificate&body=${encodeURIComponent(`Please issue my certificate of participation in OWASP projects.\n\nFullName: ${fullName}`)}`;
           window.open(issueUrl, '_blank');
         }, 1500);
       }
