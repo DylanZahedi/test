@@ -2,8 +2,8 @@ export const APP_CONFIG = {
   github: {
     owner: "DylanZahedi",
     repo: "test",
-    branch: "data", // Branch where JSON certificates are stored
+    branch: "data", // شاخه‌ای که مدارک ساخته شده در آن ذخیره می‌شوند
   },
-  domain: "https://github.com/DylanZahedi/test",
-  assetsPath: "/assets", // Assets load from root due to custom domain
+  domain: "https://dylanzahedi.github.io/test", // آدرس اصلی سایت شما برای تولید QR Code
+  assetsPath: "/test/assets", // مسیر صحیح لود شدن عکس‌ها در گیت‌هاب پیجز
 };
