@@ -80,7 +80,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
 
     const capitalizeRegex = (str) => str.replace(/(^\w|\s\w)/g, m => m.toUpperCase());
 
-    // استایل رنگ آبی دقیقا مشابه عکس جدید
     const primaryBlue = "#4a7bfe"; 
     const textGray = "#d1d5db";
 
@@ -110,7 +109,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
           currentWidth = ctx.measureText(words[i] + ' ').width; 
         }
       }
-      // خط آخر چپ چین میماند
       if (currentLine.length > 0) { ctx.textAlign = 'left'; ctx.fillText(currentLine.join(' '), x, y); }
     };
 
@@ -139,7 +137,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       const cs = size / cells;
       
       const startX = 190;
-      const startY = 3020; // کمی پایین‌تر رفت تا با متن‌های لیدرها هماهنگ شود
+      const startY = 3020; 
 
       const isFinder = (row, col) => {
         if (row < 7 && col < 7) return true; 
@@ -165,10 +163,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
         const x = startX + offsetX * cs;
         const y = startY + offsetY * cs;
         
-        let rOut = 2.5 * cs; 
-        let rMid = 1.5 * cs; 
-        let rIn = 0.8 * cs;  
-        let sh = 0.3 * cs;   
+        let rOut = 2.5 * cs; let rMid = 1.5 * cs; let rIn = 0.8 * cs; let sh = 0.3 * cs;   
         let radiiOut, radiiMid, radiiIn;
 
         if (type === 'TL') { radiiOut = [rOut, rOut, sh, rOut]; radiiMid = [rMid, rMid, sh, rMid]; radiiIn  = [rIn, rIn, sh, rIn]; } 
@@ -176,9 +171,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
         else if (type === 'BL') { radiiOut = [rOut, sh, rOut, rOut]; radiiMid = [rMid, sh, rMid, rMid]; radiiIn  = [rIn, sh, rIn, rIn]; }
 
         const drawPoly = (rArray, sizeCells, inset) => {
-           const px = x + inset * cs;
-           const py = y + inset * cs;
-           const w = sizeCells * cs;
+           const px = x + inset * cs; const py = y + inset * cs; const w = sizeCells * cs;
            ctx.beginPath();
            if (ctx.roundRect) ctx.roundRect(px, py, w, w, rArray); else ctx.rect(px, py, w, w); 
            ctx.fill();
@@ -207,8 +200,9 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.fillStyle = color; ctx.fill(transformedPath);
     };
 
-    const getResponsiveFontSize = (ctx, text, fontFamily, maxFontSize, maxWidth, minFontSize = 120) => {
-      ctx.font = `${maxFontSize}px ${fontFamily}, sans-serif`;
+    const getResponsiveFontSize = (ctx, text, weight, fontFamily, maxFontSize, maxWidth, minFontSize = 120) => {
+      // حالا وزن فونت درست پاس داده میشه
+      ctx.font = `${weight} ${maxFontSize}px ${fontFamily}, sans-serif`;
       const textWidth = ctx.measureText(text).width;
       if (textWidth <= maxWidth) return maxFontSize;
       const scaledSize = Math.floor(maxFontSize * (maxWidth / textWidth));
@@ -233,21 +227,34 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
           break;
       }
       
-      // جایگذاری نام کاربر در متن دیفالت
       const displayName = certUser.real_name ? capitalizeRegex(certUser.real_name) : (certUser.user || "UNKNOWN");
       certText = certText.replace("Daniel Martinez", displayName);
       
-      // پس‌زمینه و پترن
-      ctx.fillStyle = "#11151c"; // رنگ بک‌گراند تیره شبیه عکس
-      ctx.fillRect(0, 0, 2480, 3508);
-      
+      // ۱. رسم پترن و امضا (اول از همه رسم میشن تا بتونیم رنگشون کنیم)
       ctx.globalAlpha = 0.4; 
       if (images.current.pattern.complete && images.current.pattern.naturalWidth !== 0) {
         ctx.drawImage(images.current.pattern, 0, 0, 2480, 3508);
       }
       ctx.globalAlpha = 1;
 
-      // رندر لوگو در مرکز بالا
+      if (images.current.sign.complete) {
+        ctx.drawImage(images.current.sign, 190, 2450, 440, 290);
+      }
+
+      // ۲. بازگردانی جادوی رنگ‌آمیزی: این خط باعث میشه امضا و پترن دقیقا هم‌رنگ primaryBlue بشن
+      ctx.globalCompositeOperation = "source-atop";
+      ctx.fillStyle = primaryBlue; 
+      ctx.fillRect(0, 0, 2480, 3508);
+
+      // ۳. حالا بک‌گراند تیره رو میندازیم پشتِ پترن و امضا
+      ctx.globalCompositeOperation = "destination-over";
+      ctx.fillStyle = "#11151c"; 
+      ctx.fillRect(0, 0, 2480, 3508);
+
+      // ۴. ریست کردن حالت رسم برای نوشتن متن‌های عادی
+      ctx.globalCompositeOperation = "source-over";
+
+      // رندر لوگو 
       if (images.current.logo.complete) {
         const tempCanvas = document.createElement('canvas');
         const tWidth = images.current.logo.naturalWidth || 483;
@@ -256,13 +263,11 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.drawImage(images.current.logo, 0, 0, tWidth, tHeight);
         tempCtx.globalCompositeOperation = 'source-in';
-        tempCtx.fillStyle = primaryBlue; // لوگو رنگ آبی
+        tempCtx.fillStyle = primaryBlue; 
         tempCtx.fillRect(0, 0, tWidth, tHeight);
-        // وسط چین کردن لوگو
         ctx.drawImage(tempCanvas, centerX - (483 / 2), 350, 483, 145);
       }
 
-      // متون هدر (وسط چین)
       ctx.textAlign = "center";
       ctx.fillStyle = "white"; 
       ctx.font = "bold 220px Inter, sans-serif"; 
@@ -271,7 +276,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.font = "300 100px Inter, sans-serif"; 
       ctx.fillText("OF CONTRIBUTION", centerX, 810);
 
-      // نشانگر آیدی (Badge Pill)
       let certYear = new Date().getFullYear();
       if (certUser.stats?.first_commit_date) certYear = certUser.stats.first_commit_date.split('-')[0];
       else if (certUser.first_commit) certYear = certUser.first_commit;
@@ -294,7 +298,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.fillStyle = primaryBlue;
       ctx.fillText(certIdText, centerX, 1000);
 
-      // تایتل‌های وریفای
       let tierTitle = "// VERIFIED CONTRIBUTOR // VERIFIED CONTRIBUTOR";
       if(currentTier === "Silver") tierTitle = "// ADVANCED CONTRIBUTOR // ADVANCED CONTRIBUTOR";
       if(currentTier === "Gold") tierTitle = "// ELITE CONTRIBUTOR // ELITE CONTRIBUTOR";
@@ -306,22 +309,19 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.font = "300 75px Inter, sans-serif"; 
       ctx.fillText("PRESENTED TO", centerX, 1310); 
       
-      // نام کاربر (با فونت Anton و استایل عکس جدید)
+      // حل مشکل بولد نشدن اسم با پاس دادن صریح وزن 400
       const nameMaxWidth = 2100;
-      const nameFontSize = getResponsiveFontSize(ctx, displayName, "Anton", 340, nameMaxWidth);
-      ctx.font = `${nameFontSize}px Anton, sans-serif`;
+      const nameFontSize = getResponsiveFontSize(ctx, displayName, "400", "Anton", 340, nameMaxWidth);
+      ctx.font = `400 ${nameFontSize}px Anton, sans-serif`;
       ctx.fillStyle = primaryBlue;
       ctx.fillText(displayName, centerX, 1600); 
 
-      // تنظیمات پاراگراف توضیحات
       ctx.fillStyle = textGray;
       ctx.font = "300 65px Inter, sans-serif"; 
       const startY = 1780;
       const lineHeight = 100;
-      // جاستیفای کشیدن متن، X:190 تا آخر کادر
       drawJustifiedText(ctx, certText, 190, startY, 2100, lineHeight);
 
-      // تعداد ریپازیتوری
       const textLines = calculateLines(ctx, certText, 2100);
       const dynamicRepoY = startY + (textLines * lineHeight) + 60;
       ctx.font = "italic 50px Inter, sans-serif";
@@ -329,13 +329,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       const projectCount = certUser.stats?.project_count || 1;
       ctx.textAlign = "left";
       ctx.fillText(`+${projectCount} ${projectCount === 1 ? 'Repository' : 'Repositories'}`, 190, dynamicRepoY); 
-
-      // امضا
-      if (images.current.sign.complete) {
-        ctx.drawImage(images.current.sign, 190, 2450, 440, 290);
-      }
       
-      // اطلاعات پایین (لیدرها)
       ctx.font = "bold 70px Inter, sans-serif"; 
       ctx.fillStyle = primaryBlue;
       ctx.textAlign = "left";
@@ -345,14 +339,13 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.fillText("Fatemeh Zahedi", 2290, 2850);
       
       ctx.font = "300 45px Inter, sans-serif"; 
-      ctx.fillStyle = "#6b7280"; // رنگ طوسی ملایم برای تایتل لیدرها
+      ctx.fillStyle = "#6b7280"; 
       ctx.textAlign = "left";
       ctx.fillText("OWASP-CRT Project Leader", 190, 2920); 
       
       ctx.textAlign = "right";
       ctx.fillText("OWASP-CRT Project Co-Leader", 2290, 2920);
       
-      // QR Code در پایین سمت چپ
       ctx.textAlign = "left";
       generateQRCodeAdvanced({ color: primaryBlue });
       
@@ -367,9 +360,9 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       loadedImages++;
       if (loadedImages === totalImages) {
         try {
-          // اجبار دانلود فونت‌های جدید با سایز و استایل دقیق
+          // حل مشکل لود نشدن فونت در مرورگر با پاس دادن وزن صریح (400 برای Anton)
           await Promise.all([
-            document.fonts.load('340px Anton'),
+            document.fonts.load('400 340px Anton'),
             document.fonts.load('bold 220px Inter'),
             document.fonts.load('300 100px Inter'),
             document.fonts.load('400 65px Inter'),
