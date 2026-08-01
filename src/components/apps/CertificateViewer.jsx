@@ -235,7 +235,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     };
 
     const getResponsiveFontSize = (ctx, text, fontFamily, maxFontSize, maxWidth, minFontSize = 120) => {
-      ctx.font = `${maxFontSize}px ${fontFamily}`;
+      ctx.font = `${maxFontSize}px ${fontFamily}, sans-serif`;
       const textWidth = ctx.measureText(text).width;
       if (textWidth <= maxWidth) return maxFontSize;
       const scaledSize = Math.floor(maxFontSize * (maxWidth / textWidth));
@@ -259,7 +259,8 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
           break;
       }
       
-      ctx.font = "300 75px Cabin"; 
+      // حل مشکل فال‌بک تکست با اضافه کردن sans-serif
+      ctx.font = "300 75px Cabin, sans-serif"; 
       const textLines = calculateLines(ctx, certText, 2100);
       const startY = 1840;
       const lineHeight = 110;
@@ -273,7 +274,8 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       
       ctx.globalAlpha = 1;
       if (images.current.sign.complete) {
-        ctx.drawImage(images.current.sign, 300, 2460, 440, 290);
+        // امضا دقیقاً چپ‌چین و بالای اسم تراز شد (X از 300 به 190 تغییر کرد)
+        ctx.drawImage(images.current.sign, 190, 2520, 440, 290);
       }
       
       ctx.globalCompositeOperation = "source-atop";
@@ -297,7 +299,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.stroke();
       ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; 
       
-      ctx.font = "700 70px Inter";
+      ctx.font = "400 70px Inter, sans-serif"; // نازک‌تر شد
       let certYear = new Date().getFullYear();
       if (certUser.stats?.first_commit_date) certYear = certUser.stats.first_commit_date.split('-')[0];
       else if (certUser.first_commit) certYear = certUser.first_commit;
@@ -306,23 +308,25 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       
       const displayName = certUser.real_name ? capitalizeRegex(certUser.real_name) : (certUser.user || "UNKNOWN");
       const nameMaxWidth = 2100;
-      const nameFontSize = getResponsiveFontSize(ctx, displayName, "Anton", 260, nameMaxWidth);
-      ctx.font = `${nameFontSize}px Anton`;
+      // تغییر فونت اسم از Anton زمخت به Inter نازک و شیک (وزن 300)
+      const nameFontSize = getResponsiveFontSize(ctx, displayName, "Inter", 260, nameMaxWidth);
+      ctx.font = `300 ${nameFontSize}px Inter, sans-serif`;
       ctx.fillText(displayName, 190, 1680); 
       
-      ctx.font = "italic 70px Cabin";
+      ctx.font = "italic 70px Cabin, sans-serif";
       const projectCount = certUser.stats?.project_count || 1;
       ctx.fillText(`${projectCount} ${projectCount === 1 ? 'Repository' : 'Repositories'}`, 190, dynamicRepoY); 
       
-      ctx.font = "bold 90px Inter"; ctx.fillText("Meysam Bal-afkan", 190, 2850); ctx.fillText("Fatemeh Zahedi", 1510, 2850);
-      ctx.font = "50px Cabin"; ctx.fillText("OWASP-CRT Project Leader", 190, 2930); ctx.fillText("OWASP-CRT Project Co-Leader", 1510, 2930);
+      // اسامی لیدرها با فونت متعادل‌تر
+      ctx.font = "600 80px Inter, sans-serif"; ctx.fillText("Meysam Bal-afkan", 190, 2850); ctx.fillText("Fatemeh Zahedi", 1510, 2850);
+      ctx.font = "300 50px Cabin, sans-serif"; ctx.fillText("OWASP-CRT Project Leader", 190, 2930); ctx.fillText("OWASP-CRT Project Co-Leader", 1510, 2930);
       
       generateQRCodeAdvanced({ color: g });
       
       ctx.fillStyle = "white"; 
       ctx.font = "bold 200px 'Cascadia Mono', monospace"; ctx.fillText("CERTIFICATE", 330, 800);
-      ctx.font = "200 100px 'Cascadia Code', monospace"; ctx.fillText("OF CONTRIBUTION", 550, 900);
-      ctx.font = "200 70px Cabin"; ctx.fillText("PRESENTED TO", 640, 1400); 
+      ctx.font = "300 100px 'Cascadia Code', monospace"; ctx.fillText("OF CONTRIBUTION", 550, 900);
+      ctx.font = "200 70px Cabin, sans-serif"; ctx.fillText("PRESENTED TO", 640, 1400); 
 
       let tierTitleLeft = "";
       let tierTitleRight = "";
@@ -343,11 +347,11 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       }
       
       ctx.fillStyle = g; 
-      ctx.font = "700 70px Inter";
+      ctx.font = "400 70px Inter, sans-serif"; // نازک‌تر شد
       ctx.fillText(`${tierTitleLeft}   ${tierTitleRight}`, 190, 1250);
       
       ctx.fillStyle = "white";
-      ctx.font = "300 75px Cabin"; 
+      ctx.font = "300 75px Cabin, sans-serif"; 
       drawJustifiedText(ctx, certText, 190, startY, 2100, lineHeight);
 
       if (images.current.logo.complete) {
@@ -374,29 +378,26 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     let loadedImages = 0;
     const totalImages = 3; 
     
-    // جادوی جدید برای لودینگ اجباری فونت‌ها در تمامی مرورگرها از جمله شیائومی
     const checkReady = async () => {
       loadedImages++;
       if (loadedImages === totalImages) {
         try {
-          // اجبار مرورگر به دانلود و لود تک‌تک فونت‌هایی که در مدرک استفاده می‌شوند
+          // تطابق وزن فونت‌ها برای لودینگ دقیق قبل از رندر
           await Promise.all([
-            document.fonts.load('260px Anton'),
-            document.fonts.load('75px Cabin'),
+            document.fonts.load('300 260px Inter'),
+            document.fonts.load('300 75px Cabin'),
             document.fonts.load('italic 70px Cabin'),
-            document.fonts.load('70px Inter'),
-            document.fonts.load('bold 90px Inter'),
-            document.fonts.load('200px "Cascadia Mono"'),
-            document.fonts.load('100px "Cascadia Code"')
+            document.fonts.load('400 70px Inter'),
+            document.fonts.load('600 80px Inter'),
+            document.fonts.load('bold 200px "Cascadia Mono"'),
+            document.fonts.load('300 100px "Cascadia Code"')
           ]);
           
-          // تأخیر ۱۵۰ میلی‌ثانیه‌ای برای اطمینان از اعمال تغییرات در موتور گرافیکی اندروید
           setTimeout(() => {
             renderCertificate();
           }, 150);
         } catch (err) {
           console.error("Font loading error:", err);
-          // در صورت بروز هرگونه مشکل شبکه، رندر فال‌بک اجرا می‌شود
           renderCertificate();
         }
       }
@@ -446,7 +447,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
         </div>
       )}
       
-      {/* دایو والد با قابلیت اسکرول نرم افقی در حالت موبایل */}
       <div className="w-full h-full overflow-auto custom-scrollbar bg-[#0a0b10] flex justify-center items-center p-[25px] rounded-b-[11px] max-md:p-[20px_10px] max-md:justify-start">
         {activeError ? (
           renderErrorState()
@@ -464,7 +464,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
               <img 
                 src={previewImage} 
                 alt="OWASP Certificate Preview" 
-                /* حفظ نسبت ابعاد و عرض حداقلی برای جلوگیری از فشردگی در موبایل */
                 className="max-w-full max-h-full w-auto h-auto max-md:max-h-none max-md:max-w-none max-md:min-w-[800px] aspect-[2480/3508] block shadow-[0_15px_40px_rgba(0,0,0,0.8)] mx-auto"
               />
             ) : (
