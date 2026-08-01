@@ -8,7 +8,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchedId, setFetchedId] = useState(null);
-  const [fontsLoaded, setFontsLoaded] = useState(false); // اضافه شدن وضعیت لود فونت‌ها
+  const [fontsLoaded, setFontsLoaded] = useState(false);
   
   const [showHint, setShowHint] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
@@ -16,23 +16,40 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     logo: new Image(), sign: new Image(), pattern: new Image()
   });
 
-  // لود کردن فونت‌های استاندارد گوگل
+  // مکانیزم بسیار سخت‌گیرانه برای اطمینان از لود فونت‌ها در موبایل
   useEffect(() => {
+    let isMounted = true;
     const loadFonts = async () => {
       const linkId = 'cert-google-fonts';
       if (!document.getElementById(linkId)) {
         const link = document.createElement('link');
         link.id = linkId;
-        link.href = 'https://fonts.googleapis.com/css2?family=Anton&family=Fira+Code:wght@300;400;700&family=Inter:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap';
+        link.href = 'https://fonts.googleapis.com/css2?family=Anton&family=Fira+Code:wght@300;700&family=Inter:wght@300;400;600;700&display=swap';
         link.rel = 'stylesheet';
         document.head.appendChild(link);
       }
       
-      // صبر کردن برای لود کامل فونت‌ها در مرورگر
-      await document.fonts.ready;
-      setFontsLoaded(true);
+      try {
+        await document.fonts.ready;
+        // اجبار مرورگر موبایل به دانلود و آماده‌سازی دقیق همین وزن‌ها
+        const fontsToLoad = [
+          'normal 10px "Anton"',
+          '700 10px "Inter"',
+          '600 10px "Inter"',
+          '400 10px "Inter"',
+          '300 10px "Inter"',
+          '700 10px "Fira Code"',
+          '300 10px "Fira Code"'
+        ];
+        await Promise.all(fontsToLoad.map(f => document.fonts.load(f)));
+      } catch (e) {
+        console.warn("Font Force-Load Warning:", e);
+      }
+      
+      if(isMounted) setFontsLoaded(true);
     };
     loadFonts();
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
@@ -83,7 +100,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
   const activeError = (certId && certId !== fetchedId) ? null : error;
 
   useEffect(() => {
-    // اجرا فقط وقتی فونت‌ها لود شده باشند
     if (!certUser || !canvasRef.current || activeError || !fontsLoaded) return;
     
     const canvas = canvasRef.current;
@@ -257,7 +273,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     };
 
     const getResponsiveFontSize = (ctx, text, fontFamily, maxFontSize, maxWidth, minFontSize = 120) => {
-      ctx.font = `${maxFontSize}px ${fontFamily}`;
+      ctx.font = `normal ${maxFontSize}px ${fontFamily}`;
       const textWidth = ctx.measureText(text).width;
       if (textWidth <= maxWidth) return maxFontSize;
       const scaledSize = Math.floor(maxFontSize * (maxWidth / textWidth));
@@ -281,7 +297,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
           break;
       }
       
-      // جایگزینی فونت Corbel با Inter
       ctx.font = "300 75px 'Inter', sans-serif"; 
       const textLines = calculateLines(ctx, certText, 2100);
       const startY = 1840;
@@ -320,23 +335,28 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.stroke();
       ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; 
       
-      // جایگزینی فونت Ebrima با Inter ضخیم
-      ctx.font = "600 70px 'Inter', sans-serif";
+      // اصلاح اندازه فونت و افزودن محدودیت عرض برای کادر شناسه (جلوگیری از بیرون زدن)
+      ctx.font = "600 65px 'Inter', sans-serif";
       let certYear = new Date().getFullYear();
       if (certUser.stats?.first_commit_date) certYear = certUser.stats.first_commit_date.split('-')[0];
       else if (certUser.first_commit) certYear = certUser.first_commit;
       const certIdText = `CRT-OWASP-${certUser.id || "000"} : ${certYear}`;
-      ctx.fillText(certIdText, 460 + (1070 - ctx.measureText(certIdText).width) / 2, 1085);
+      
+      const maxTextWidth = 1000; // حداکثر عرض مجاز متن داخل مستطیل ۱۰۷۰ پیکسلی
+      let textWidth = ctx.measureText(certIdText).width;
+      if(textWidth > maxTextWidth) textWidth = maxTextWidth; // محاسبه برای Center کردن دقیق
+      
+      // پارامتر چهارم (maxWidth) تضمین می‌کند که متن هرگز بزرگتر از کادر نشود
+      ctx.fillText(certIdText, 460 + (1070 - textWidth) / 2, 1083, maxTextWidth);
       
       const displayName = certUser.real_name ? capitalizeRegex(certUser.real_name) : (certUser.user || "UNKNOWN");
       const nameMaxWidth = 2100;
       
-      // جایگزینی فونت Impact با Anton
-      const nameFontSize = getResponsiveFontSize(ctx, displayName, "'Anton', sans-serif", 260, nameMaxWidth);
-      ctx.font = `400 ${nameFontSize}px 'Anton', sans-serif`;
-      ctx.fillText(displayName, 190, 1680); 
+      // استفاده دقیق از فونت Anton با وزن نرمال (برای جلوگیری از باگ مرورگر در رندر این فونت)
+      const nameFontSize = getResponsiveFontSize(ctx, displayName, '"Anton", sans-serif', 260, nameMaxWidth);
+      ctx.font = `normal ${nameFontSize}px "Anton", sans-serif`;
+      ctx.fillText(displayName, 190, 1680, nameMaxWidth); 
       
-      // جایگزینی بقیه فونت‌ها
       ctx.font = "italic 400 70px 'Inter', sans-serif";
       const projectCount = certUser.stats?.project_count || 1;
       ctx.fillText(`${projectCount} ${projectCount === 1 ? 'Repository' : 'Repositories'}`, 190, dynamicRepoY); 
@@ -377,21 +397,24 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.font = "300 75px 'Inter', sans-serif"; 
       drawJustifiedText(ctx, certText, 190, startY, 2100, lineHeight);
 
+      // قفل کردن سایز لوگو برای جلوگیری از بهم ریختگی در نسخه موبایل (زمانی که naturalWidth لود نشده باشد)
       if (images.current.logo.complete) {
         const tempCanvas = document.createElement('canvas');
-        const tWidth = images.current.logo.naturalWidth || 483;
-        const tHeight = images.current.logo.naturalHeight || 145;
+        const tWidth = 483;  // مقدار ثابت به جای naturalWidth
+        const tHeight = 145; // مقدار ثابت به جای naturalHeight
         tempCanvas.width = tWidth;
         tempCanvas.height = tHeight;
         const tempCtx = tempCanvas.getContext('2d');
         
+        // رسم با ابعاد صریح
         tempCtx.drawImage(images.current.logo, 0, 0, tWidth, tHeight);
         
         tempCtx.globalCompositeOperation = 'source-in';
         tempCtx.fillStyle = '#FFFFFF';
         tempCtx.fillRect(0, 0, tWidth, tHeight);
         
-        ctx.drawImage(tempCanvas, 330, 415, 483, 145);
+        // ترسیم لوگو روی کانواس اصلی با ابعاد ثابت
+        ctx.drawImage(tempCanvas, 330, 415, tWidth, tHeight);
       }
       
       const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
@@ -411,7 +434,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     if (images.current.sign.complete) checkReady(); else images.current.sign.onload = checkReady;
     if (images.current.pattern.complete) checkReady(); else images.current.pattern.onload = checkReady;
     
-  }, [certUser, activeError, fontsLoaded]); // اضافه شدن fontsLoaded به Dependency Array
+  }, [certUser, activeError, fontsLoaded]);
 
   const renderErrorState = () => {
     return (
