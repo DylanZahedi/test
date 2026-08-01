@@ -22,7 +22,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Clear data immediately on ID change to prevent ghosting
       if (!certId) {
         setIsLoading(false);
         setError("NO_ID_PROVIDED");
@@ -61,7 +60,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     fetchData();
   }, [certId, setTelemetryData]);
 
-  // Derived state to prevent error flashes during ID transition
   const activeError = (certId && certId !== fetchedId) ? null : error;
 
   useEffect(() => {
@@ -261,7 +259,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
           break;
       }
       
-      ctx.font = "300 75px Corbel"; 
+      ctx.font = "300 75px Cabin"; 
       const textLines = calculateLines(ctx, certText, 2100);
       const startY = 1840;
       const lineHeight = 110;
@@ -299,7 +297,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.stroke();
       ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; 
       
-      ctx.font = "70px Ebrima";
+      ctx.font = "700 70px Inter";
       let certYear = new Date().getFullYear();
       if (certUser.stats?.first_commit_date) certYear = certUser.stats.first_commit_date.split('-')[0];
       else if (certUser.first_commit) certYear = certUser.first_commit;
@@ -308,23 +306,23 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       
       const displayName = certUser.real_name ? capitalizeRegex(certUser.real_name) : (certUser.user || "UNKNOWN");
       const nameMaxWidth = 2100;
-      const nameFontSize = getResponsiveFontSize(ctx, displayName, "Impact", 260, nameMaxWidth);
-      ctx.font = `${nameFontSize}px Impact`;
+      const nameFontSize = getResponsiveFontSize(ctx, displayName, "Anton", 260, nameMaxWidth);
+      ctx.font = `${nameFontSize}px Anton`;
       ctx.fillText(displayName, 190, 1680); 
       
-      ctx.font = "italic 70px Corbel";
+      ctx.font = "italic 70px Cabin";
       const projectCount = certUser.stats?.project_count || 1;
       ctx.fillText(`${projectCount} ${projectCount === 1 ? 'Repository' : 'Repositories'}`, 190, dynamicRepoY); 
       
-      ctx.font = "Bold 90px Ebrima"; ctx.fillText("Meysam Bal-afkan", 190, 2850); ctx.fillText("Fatemeh Zahedi", 1510, 2850);
-      ctx.font = "50px Corbel"; ctx.fillText("OWASP-CRT Project Leader", 190, 2930); ctx.fillText("OWASP-CRT Project Co-Leader", 1510, 2930);
+      ctx.font = "bold 90px Inter"; ctx.fillText("Meysam Bal-afkan", 190, 2850); ctx.fillText("Fatemeh Zahedi", 1510, 2850);
+      ctx.font = "50px Cabin"; ctx.fillText("OWASP-CRT Project Leader", 190, 2930); ctx.fillText("OWASP-CRT Project Co-Leader", 1510, 2930);
       
       generateQRCodeAdvanced({ color: g });
       
       ctx.fillStyle = "white"; 
       ctx.font = "bold 200px 'Cascadia Mono', monospace"; ctx.fillText("CERTIFICATE", 330, 800);
       ctx.font = "200 100px 'Cascadia Code', monospace"; ctx.fillText("OF CONTRIBUTION", 550, 900);
-      ctx.font = "200 70px Corbel"; ctx.fillText("PRESENTED TO", 640, 1400); 
+      ctx.font = "200 70px Cabin"; ctx.fillText("PRESENTED TO", 640, 1400); 
 
       let tierTitleLeft = "";
       let tierTitleRight = "";
@@ -345,11 +343,11 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       }
       
       ctx.fillStyle = g; 
-      ctx.font = "70px Ebrima";
+      ctx.font = "700 70px Inter";
       ctx.fillText(`${tierTitleLeft}   ${tierTitleRight}`, 190, 1250);
       
       ctx.fillStyle = "white";
-      ctx.font = "300 75px Corbel"; 
+      ctx.font = "300 75px Cabin"; 
       drawJustifiedText(ctx, certText, 190, startY, 2100, lineHeight);
 
       if (images.current.logo.complete) {
@@ -375,10 +373,32 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
 
     let loadedImages = 0;
     const totalImages = 3; 
-    const checkReady = () => {
+    
+    // جادوی جدید برای لودینگ اجباری فونت‌ها در تمامی مرورگرها از جمله شیائومی
+    const checkReady = async () => {
       loadedImages++;
       if (loadedImages === totalImages) {
-        renderCertificate();
+        try {
+          // اجبار مرورگر به دانلود و لود تک‌تک فونت‌هایی که در مدرک استفاده می‌شوند
+          await Promise.all([
+            document.fonts.load('260px Anton'),
+            document.fonts.load('75px Cabin'),
+            document.fonts.load('italic 70px Cabin'),
+            document.fonts.load('70px Inter'),
+            document.fonts.load('bold 90px Inter'),
+            document.fonts.load('200px "Cascadia Mono"'),
+            document.fonts.load('100px "Cascadia Code"')
+          ]);
+          
+          // تأخیر ۱۵۰ میلی‌ثانیه‌ای برای اطمینان از اعمال تغییرات در موتور گرافیکی اندروید
+          setTimeout(() => {
+            renderCertificate();
+          }, 150);
+        } catch (err) {
+          console.error("Font loading error:", err);
+          // در صورت بروز هرگونه مشکل شبکه، رندر فال‌بک اجرا می‌شود
+          renderCertificate();
+        }
       }
     };
 
@@ -426,7 +446,8 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
         </div>
       )}
       
-      <div className="w-full h-full overflow-hidden bg-[#0a0b10] flex justify-center items-center p-[25px] rounded-b-[11px] max-md:p-[20px_10px]">
+      {/* دایو والد با قابلیت اسکرول نرم افقی در حالت موبایل */}
+      <div className="w-full h-full overflow-auto custom-scrollbar bg-[#0a0b10] flex justify-center items-center p-[25px] rounded-b-[11px] max-md:p-[20px_10px] max-md:justify-start">
         {activeError ? (
           renderErrorState()
         ) : (
@@ -443,10 +464,11 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
               <img 
                 src={previewImage} 
                 alt="OWASP Certificate Preview" 
-                className="max-w-full max-h-full w-auto h-auto aspect-[2480/3508] block shadow-[0_15px_40px_rgba(0,0,0,0.8)]"
+                /* حفظ نسبت ابعاد و عرض حداقلی برای جلوگیری از فشردگی در موبایل */
+                className="max-w-full max-h-full w-auto h-auto max-md:max-h-none max-md:max-w-none max-md:min-w-[800px] aspect-[2480/3508] block shadow-[0_15px_40px_rgba(0,0,0,0.8)] mx-auto"
               />
             ) : (
-              <div className="text-[#4a7bfe] font-['Fira_Code',monospace] text-xs animate-pulse">
+              <div className="text-[#4a7bfe] font-['Fira_Code',monospace] text-xs animate-pulse mx-auto flex items-center justify-center w-full">
                 [+] RENDERING MATRIX...
               </div>
             )}
