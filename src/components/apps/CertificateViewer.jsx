@@ -16,7 +16,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     logo: new Image(), sign: new Image(), pattern: new Image()
   });
 
-  // مکانیزم بسیار سخت‌گیرانه برای اطمینان از لود فونت‌ها در موبایل
+  // منطق جدید و تضمینی برای لود فونت در موبایل
   useEffect(() => {
     let isMounted = true;
     const loadFonts = async () => {
@@ -30,24 +30,19 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       }
       
       try {
-        await document.fonts.ready;
-        // اجبار مرورگر موبایل به دانلود و آماده‌سازی دقیق همین وزن‌ها
-        const fontsToLoad = [
-          'normal 10px "Anton"',
-          '700 10px "Inter"',
-          '600 10px "Inter"',
-          '400 10px "Inter"',
-          '300 10px "Inter"',
-          '700 10px "Fira Code"',
-          '300 10px "Fira Code"'
-        ];
-        await Promise.all(fontsToLoad.map(f => document.fonts.load(f)));
+        if (document.fonts) {
+          await document.fonts.ready;
+        }
       } catch (e) {
-        console.warn("Font Force-Load Warning:", e);
+        console.warn("Font Load Status:", e);
       }
-      
-      if(isMounted) setFontsLoaded(true);
+
+      // یک وقفه کوتاه می‌دهیم تا موتور رندرینگ موبایل فونت‌ها را در المان نامرئی پایین صفحه اعمال کند
+      setTimeout(() => {
+        if (isMounted) setFontsLoaded(true);
+      }, 300);
     };
+    
     loadFonts();
     return () => { isMounted = false; };
   }, []);
@@ -100,6 +95,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
   const activeError = (certId && certId !== fetchedId) ? null : error;
 
   useEffect(() => {
+    // منتظر می‌مانیم تا فونت‌ها ۱۰۰٪ توسط مرورگر اعمال شوند
     if (!certUser || !canvasRef.current || activeError || !fontsLoaded) return;
     
     const canvas = canvasRef.current;
@@ -273,7 +269,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     };
 
     const getResponsiveFontSize = (ctx, text, fontFamily, maxFontSize, maxWidth, minFontSize = 120) => {
-      ctx.font = `normal ${maxFontSize}px ${fontFamily}`;
+      ctx.font = `${maxFontSize}px ${fontFamily}`;
       const textWidth = ctx.measureText(text).width;
       if (textWidth <= maxWidth) return maxFontSize;
       const scaledSize = Math.floor(maxFontSize * (maxWidth / textWidth));
@@ -335,26 +331,24 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.stroke();
       ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; 
       
-      // اصلاح اندازه فونت و افزودن محدودیت عرض برای کادر شناسه (جلوگیری از بیرون زدن)
       ctx.font = "600 65px 'Inter', sans-serif";
       let certYear = new Date().getFullYear();
       if (certUser.stats?.first_commit_date) certYear = certUser.stats.first_commit_date.split('-')[0];
       else if (certUser.first_commit) certYear = certUser.first_commit;
       const certIdText = `CRT-OWASP-${certUser.id || "000"} : ${certYear}`;
       
-      const maxTextWidth = 1000; // حداکثر عرض مجاز متن داخل مستطیل ۱۰۷۰ پیکسلی
+      const maxTextWidth = 1000;
       let textWidth = ctx.measureText(certIdText).width;
-      if(textWidth > maxTextWidth) textWidth = maxTextWidth; // محاسبه برای Center کردن دقیق
-      
-      // پارامتر چهارم (maxWidth) تضمین می‌کند که متن هرگز بزرگتر از کادر نشود
+      if(textWidth > maxTextWidth) textWidth = maxTextWidth; 
       ctx.fillText(certIdText, 460 + (1070 - textWidth) / 2, 1083, maxTextWidth);
       
+      // فونت‌های جایگزین ۱۰۰٪ ضخیم (Impact و Arial Black) برای اطمینان خاطر روی موبایل
       const displayName = certUser.real_name ? capitalizeRegex(certUser.real_name) : (certUser.user || "UNKNOWN");
       const nameMaxWidth = 2100;
+      const nameFontFamily = '"Anton", Impact, "Arial Black", sans-serif'; 
+      const nameFontSize = getResponsiveFontSize(ctx, displayName, nameFontFamily, 260, nameMaxWidth);
       
-      // استفاده دقیق از فونت Anton با وزن نرمال (برای جلوگیری از باگ مرورگر در رندر این فونت)
-      const nameFontSize = getResponsiveFontSize(ctx, displayName, '"Anton", sans-serif', 260, nameMaxWidth);
-      ctx.font = `normal ${nameFontSize}px "Anton", sans-serif`;
+      ctx.font = `${nameFontSize}px ${nameFontFamily}`;
       ctx.fillText(displayName, 190, 1680, nameMaxWidth); 
       
       ctx.font = "italic 400 70px 'Inter', sans-serif";
@@ -397,23 +391,18 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.font = "300 75px 'Inter', sans-serif"; 
       drawJustifiedText(ctx, certText, 190, startY, 2100, lineHeight);
 
-      // قفل کردن سایز لوگو برای جلوگیری از بهم ریختگی در نسخه موبایل (زمانی که naturalWidth لود نشده باشد)
       if (images.current.logo.complete) {
         const tempCanvas = document.createElement('canvas');
-        const tWidth = 483;  // مقدار ثابت به جای naturalWidth
-        const tHeight = 145; // مقدار ثابت به جای naturalHeight
+        const tWidth = 483;
+        const tHeight = 145; 
         tempCanvas.width = tWidth;
         tempCanvas.height = tHeight;
         const tempCtx = tempCanvas.getContext('2d');
         
-        // رسم با ابعاد صریح
         tempCtx.drawImage(images.current.logo, 0, 0, tWidth, tHeight);
-        
         tempCtx.globalCompositeOperation = 'source-in';
         tempCtx.fillStyle = '#FFFFFF';
         tempCtx.fillRect(0, 0, tWidth, tHeight);
-        
-        // ترسیم لوگو روی کانواس اصلی با ابعاد ثابت
         ctx.drawImage(tempCanvas, 330, 415, tWidth, tHeight);
       }
       
@@ -459,6 +448,17 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
   return (
     <div className="relative w-full h-full overflow-hidden">
       
+      {/* ترفند اجبار مرورگرهای موبایل به رندر کامل فونت‌ها پیش از اجرای Canvas */}
+      <div style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -1, width: 0, height: 0, overflow: 'hidden' }}>
+        <span style={{ fontFamily: '"Anton", sans-serif' }}>Load Font</span>
+        <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 300 }}>Load Font</span>
+        <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 400 }}>Load Font</span>
+        <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 600 }}>Load Font</span>
+        <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700 }}>Load Font</span>
+        <span style={{ fontFamily: '"Fira Code", monospace', fontWeight: 300 }}>Load Font</span>
+        <span style={{ fontFamily: '"Fira Code", monospace', fontWeight: 700 }}>Load Font</span>
+      </div>
+
       {(!activeError && showHint && certUser) && (
         <div
           className={`absolute top-[20px] left-[30px] w-[260px] bg-[rgba(15,17,26,0.95)] backdrop-blur-[10px] py-3 px-4 rounded-[8px] z-[100] shadow-[0_10px_30px_rgba(0,0,0,0.8)] transition-all duration-500 pointer-events-none border border-[#4a7bfe] before:content-[''] before:absolute before:left-[20px] before:top-[-6px] before:-rotate-[225deg] before:w-3 before:h-3 before:bg-[rgba(15,17,26,0.95)] before:border-l-[#4a7bfe] before:border-b-[#4a7bfe] max-md:hidden opacity-100 visible`}
