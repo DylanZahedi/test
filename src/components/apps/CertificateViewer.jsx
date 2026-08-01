@@ -8,12 +8,32 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchedId, setFetchedId] = useState(null);
+  const [fontsLoaded, setFontsLoaded] = useState(false); // اضافه شدن وضعیت لود فونت‌ها
   
   const [showHint, setShowHint] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
   const images = useRef({
     logo: new Image(), sign: new Image(), pattern: new Image()
   });
+
+  // لود کردن فونت‌های استاندارد گوگل
+  useEffect(() => {
+    const loadFonts = async () => {
+      const linkId = 'cert-google-fonts';
+      if (!document.getElementById(linkId)) {
+        const link = document.createElement('link');
+        link.id = linkId;
+        link.href = 'https://fonts.googleapis.com/css2?family=Anton&family=Fira+Code:wght@300;400;700&family=Inter:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+      
+      // صبر کردن برای لود کامل فونت‌ها در مرورگر
+      await document.fonts.ready;
+      setFontsLoaded(true);
+    };
+    loadFonts();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowHint(false), 7000);
@@ -22,7 +42,6 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Clear data immediately on ID change to prevent ghosting
       if (!certId) {
         setIsLoading(false);
         setError("NO_ID_PROVIDED");
@@ -61,11 +80,12 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     fetchData();
   }, [certId, setTelemetryData]);
 
-  // Derived state to prevent error flashes during ID transition
   const activeError = (certId && certId !== fetchedId) ? null : error;
 
   useEffect(() => {
-    if (!certUser || !canvasRef.current || activeError) return;
+    // اجرا فقط وقتی فونت‌ها لود شده باشند
+    if (!certUser || !canvasRef.current || activeError || !fontsLoaded) return;
+    
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
@@ -261,7 +281,8 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
           break;
       }
       
-      ctx.font = "300 75px Corbel"; 
+      // جایگزینی فونت Corbel با Inter
+      ctx.font = "300 75px 'Inter', sans-serif"; 
       const textLines = calculateLines(ctx, certText, 2100);
       const startY = 1840;
       const lineHeight = 110;
@@ -299,7 +320,8 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       ctx.stroke();
       ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; 
       
-      ctx.font = "70px Ebrima";
+      // جایگزینی فونت Ebrima با Inter ضخیم
+      ctx.font = "600 70px 'Inter', sans-serif";
       let certYear = new Date().getFullYear();
       if (certUser.stats?.first_commit_date) certYear = certUser.stats.first_commit_date.split('-')[0];
       else if (certUser.first_commit) certYear = certUser.first_commit;
@@ -308,23 +330,26 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       
       const displayName = certUser.real_name ? capitalizeRegex(certUser.real_name) : (certUser.user || "UNKNOWN");
       const nameMaxWidth = 2100;
-      const nameFontSize = getResponsiveFontSize(ctx, displayName, "Impact", 260, nameMaxWidth);
-      ctx.font = `${nameFontSize}px Impact`;
+      
+      // جایگزینی فونت Impact با Anton
+      const nameFontSize = getResponsiveFontSize(ctx, displayName, "'Anton', sans-serif", 260, nameMaxWidth);
+      ctx.font = `400 ${nameFontSize}px 'Anton', sans-serif`;
       ctx.fillText(displayName, 190, 1680); 
       
-      ctx.font = "italic 70px Corbel";
+      // جایگزینی بقیه فونت‌ها
+      ctx.font = "italic 400 70px 'Inter', sans-serif";
       const projectCount = certUser.stats?.project_count || 1;
       ctx.fillText(`${projectCount} ${projectCount === 1 ? 'Repository' : 'Repositories'}`, 190, dynamicRepoY); 
       
-      ctx.font = "Bold 90px Ebrima"; ctx.fillText("Meysam Bal-afkan", 190, 2850); ctx.fillText("Fatemeh Zahedi", 1510, 2850);
-      ctx.font = "50px Corbel"; ctx.fillText("OWASP-CRT Project Leader", 190, 2930); ctx.fillText("OWASP-CRT Project Co-Leader", 1510, 2930);
+      ctx.font = "700 90px 'Inter', sans-serif"; ctx.fillText("Meysam Bal-afkan", 190, 2850); ctx.fillText("Fatemeh Zahedi", 1510, 2850);
+      ctx.font = "400 50px 'Inter', sans-serif"; ctx.fillText("OWASP-CRT Project Leader", 190, 2930); ctx.fillText("OWASP-CRT Project Co-Leader", 1510, 2930);
       
       generateQRCodeAdvanced({ color: g });
       
       ctx.fillStyle = "white"; 
-      ctx.font = "bold 200px 'Cascadia Mono', monospace"; ctx.fillText("CERTIFICATE", 330, 800);
-      ctx.font = "200 100px 'Cascadia Code', monospace"; ctx.fillText("OF CONTRIBUTION", 550, 900);
-      ctx.font = "200 70px Corbel"; ctx.fillText("PRESENTED TO", 640, 1400); 
+      ctx.font = "700 200px 'Fira Code', monospace"; ctx.fillText("CERTIFICATE", 330, 800);
+      ctx.font = "300 100px 'Fira Code', monospace"; ctx.fillText("OF CONTRIBUTION", 550, 900);
+      ctx.font = "300 70px 'Inter', sans-serif"; ctx.fillText("PRESENTED TO", 640, 1400); 
 
       let tierTitleLeft = "";
       let tierTitleRight = "";
@@ -345,11 +370,11 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       }
       
       ctx.fillStyle = g; 
-      ctx.font = "70px Ebrima";
+      ctx.font = "600 70px 'Inter', sans-serif";
       ctx.fillText(`${tierTitleLeft}   ${tierTitleRight}`, 190, 1250);
       
       ctx.fillStyle = "white";
-      ctx.font = "300 75px Corbel"; 
+      ctx.font = "300 75px 'Inter', sans-serif"; 
       drawJustifiedText(ctx, certText, 190, startY, 2100, lineHeight);
 
       if (images.current.logo.complete) {
@@ -386,7 +411,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     if (images.current.sign.complete) checkReady(); else images.current.sign.onload = checkReady;
     if (images.current.pattern.complete) checkReady(); else images.current.pattern.onload = checkReady;
     
-  }, [certUser, activeError]);
+  }, [certUser, activeError, fontsLoaded]); // اضافه شدن fontsLoaded به Dependency Array
 
   const renderErrorState = () => {
     return (
