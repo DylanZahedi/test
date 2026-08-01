@@ -80,16 +80,9 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
 
     const capitalizeRegex = (str) => str.replace(/(^\w|\s\w)/g, m => m.toUpperCase());
 
-    const getGradient = () => {
-      const g = ctx.createLinearGradient(canvas.width, canvas.height, 0, 0);
-      switch (currentTier) {
-        case "Bronze": g.addColorStop(0, "#ff0044"); g.addColorStop(1, "#ff3396"); break;
-        case "Silver": g.addColorStop(0, "#3fbbfe"); g.addColorStop(1, "#4157ff"); break;
-        case "Gold": g.addColorStop(0, "#ff46f0"); g.addColorStop(1, "#711bff"); break;
-        default: g.addColorStop(0, "#ff0044"); g.addColorStop(1, "#ff3396"); break;
-      }
-      return g;
-    };
+    // استایل رنگ آبی دقیقا مشابه عکس جدید
+    const primaryBlue = "#4a7bfe"; 
+    const textGray = "#d1d5db";
 
     const drawLineJustified = (ctx, words, x, y, maxWidth) => {
       if (words.length === 0) return;
@@ -110,8 +103,14 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       for (let i = 0; i < words.length; i++) {
         const wordWidth = ctx.measureText(words[i] + ' ').width;
         if (currentWidth + wordWidth <= maxWidth) { currentLine.push(words[i]); currentWidth += wordWidth; }
-        else { drawLineJustified(ctx, currentLine, x, y, maxWidth); y += lineHeight; currentLine = [words[i]]; currentWidth = ctx.measureText(words[i] + ' ').width; }
+        else { 
+          drawLineJustified(ctx, currentLine, x, y, maxWidth); 
+          y += lineHeight; 
+          currentLine = [words[i]]; 
+          currentWidth = ctx.measureText(words[i] + ' ').width; 
+        }
       }
+      // خط آخر چپ چین میماند
       if (currentLine.length > 0) { ctx.textAlign = 'left'; ctx.fillText(currentLine.join(' '), x, y); }
     };
 
@@ -140,7 +139,7 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       const cs = size / cells;
       
       const startX = 190;
-      const startY = 3000;
+      const startY = 3020; // کمی پایین‌تر رفت تا با متن‌های لیدرها هماهنگ شود
 
       const isFinder = (row, col) => {
         if (row < 7 && col < 7) return true; 
@@ -172,44 +171,25 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
         let sh = 0.3 * cs;   
         let radiiOut, radiiMid, radiiIn;
 
-        if (type === 'TL') {
-          radiiOut = [rOut, rOut, sh, rOut];
-          radiiMid = [rMid, rMid, sh, rMid];
-          radiiIn  = [rIn, rIn, sh, rIn];
-        } else if (type === 'TR') {
-          radiiOut = [rOut, rOut, rOut, sh];
-          radiiMid = [rMid, rMid, rMid, sh];
-          radiiIn  = [rIn, rIn, rIn, sh];
-        } else if (type === 'BL') {
-          radiiOut = [rOut, sh, rOut, rOut];
-          radiiMid = [rMid, sh, rMid, rMid];
-          radiiIn  = [rIn, sh, rIn, rIn];
-        }
+        if (type === 'TL') { radiiOut = [rOut, rOut, sh, rOut]; radiiMid = [rMid, rMid, sh, rMid]; radiiIn  = [rIn, rIn, sh, rIn]; } 
+        else if (type === 'TR') { radiiOut = [rOut, rOut, rOut, sh]; radiiMid = [rMid, rMid, rMid, sh]; radiiIn  = [rIn, rIn, rIn, sh]; } 
+        else if (type === 'BL') { radiiOut = [rOut, sh, rOut, rOut]; radiiMid = [rMid, sh, rMid, rMid]; radiiIn  = [rIn, sh, rIn, rIn]; }
 
         const drawPoly = (rArray, sizeCells, inset) => {
            const px = x + inset * cs;
            const py = y + inset * cs;
            const w = sizeCells * cs;
            ctx.beginPath();
-           if (ctx.roundRect) {
-               ctx.roundRect(px, py, w, w, rArray);
-           } else {
-               ctx.rect(px, py, w, w); 
-           }
+           if (ctx.roundRect) ctx.roundRect(px, py, w, w, rArray); else ctx.rect(px, py, w, w); 
            ctx.fill();
         };
 
-        ctx.fillStyle = color;            
-        drawPoly(radiiOut, 7, 0);
-        ctx.fillStyle = "#171c24";        
-        drawPoly(radiiMid, 5, 1);
-        ctx.fillStyle = color;            
-        drawPoly(radiiIn, 3, 2);
+        ctx.fillStyle = color; drawPoly(radiiOut, 7, 0);
+        ctx.fillStyle = "#171c24"; drawPoly(radiiMid, 5, 1);
+        ctx.fillStyle = color; drawPoly(radiiIn, 3, 2);
       };
 
-      drawFinder(0, 0, 'TL');          
-      drawFinder(cells - 7, 0, 'TR');  
-      drawFinder(0, cells - 7, 'BL');  
+      drawFinder(0, 0, 'TL'); drawFinder(cells - 7, 0, 'TR'); drawFinder(0, cells - 7, 'BL');  
 
       const centerX = startX + size / 2;
       const centerY = startY + size / 2;
@@ -217,21 +197,14 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       const bgRadius = renderSize / 2 + (size * 0.02); 
       
       ctx.fillStyle = "#171c24";
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, bgRadius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(centerX, centerY, bgRadius, 0, Math.PI * 2); ctx.fill();
 
       const svgPath = "M15.897 20.503c-0.384 0 -1.782 -2.489 -1.97 -3.198 -0.393 -1.486 -0.308 -2.114 -0.285 -2.314 0.072 -0.613 0.667 -0.92 0.703 -1.748 0.01 -0.256 0.14 -1.535 0.243 -2.534a1.723 1.723 0 0 1 -0.733 -0.343c0.676 0.908 -0.32 1.995 -1.767 3.443 -1.536 1.536 -4.945 2.961 -4.945 2.961s1.425 -3.41 2.961 -4.945c1.13 -1.129 2.04 -1.983 2.816 -1.983 0.22 0 0.427 0.067 0.627 0.216a1.722 1.722 0 0 1 -0.343 -0.733c-0.999 0.103 -2.278 0.232 -2.534 0.244 -0.829 0.036 -1.135 0.63 -1.747 0.702 -0.07 0.008 -0.194 0.024 -0.388 0.024 -0.36 0 -0.963 -0.054 -1.926 -0.31 -0.772 -0.203 -3.648 -1.84 -3.14 -2.045 0.26 -0.105 1.087 -0.176 2.175 -0.176 1.047 0 2.337 0.066 3.596 0.23 1.57 0.205 3.01 0.463 3.992 0.656 0.016 -0.053 0.035 -0.104 0.058 -0.154l-1.004 -0.48s-0.8 -0.92 -0.715 -0.984a0.02 0.02 0 0 1 0.012 -0.003c0.126 0 0.767 0.733 0.829 0.816l0.605 0.202 -0.284 -0.249s-0.388 -1.438 -0.287 -1.472h0.004c0.106 0 0.459 1.25 0.489 1.34 0.07 0.06 0.303 0.152 0.596 0.32l-0.308 -0.79s0.14 -1.305 0.243 -1.305h0.003c0.105 0.021 -0.02 1.089 -0.047 1.221l0.51 0.783a1.31 1.31 0 0 1 0.463 -0.082c0.184 0 0.374 0.036 0.558 0.107 -0.236 -0.502 -0.218 -1.025 0.095 -1.338a0.84 0.84 0 0 1 0.353 -0.209 0.462 0.462 0 0 1 0.457 -0.383c0.127 0 0.254 0.05 0.352 0.148a0.497 0.497 0 0 1 0.147 0.335c0.151 -0.311 0.329 -0.73 0.317 -0.867 -0.03 -0.307 -0.386 -0.852 -0.39 -0.857a0.076 0.076 0 0 1 0.064 -0.119c0.025 0 0.05 0.012 0.064 0.035 0.016 0.023 0.381 0.582 0.414 0.927 0.018 0.198 -0.21 0.696 -0.333 0.95a2.227 2.227 0 0 1 0.873 0.874c0.245 -0.12 0.715 -0.334 0.927 -0.334l0.024 0.001c0.345 0.033 0.904 0.399 0.927 0.414a0.076 0.076 0 0 1 -0.084 0.128c-0.005 -0.004 -0.55 -0.36 -0.857 -0.39h-0.015c-0.15 0 -0.552 0.171 -0.852 0.317 0.12 0.004 0.242 0.053 0.335 0.147a0.482 0.482 0 0 1 0.012 0.681 0.459 0.459 0 0 1 -0.247 0.128 0.845 0.845 0 0 1 -0.21 0.354 0.924 0.924 0 0 1 -0.67 0.255c-0.212 0 -0.441 -0.055 -0.667 -0.16 0.132 0.343 0.142 0.708 0.025 1.02l0.783 0.51c0.095 -0.019 0.666 -0.088 0.993 -0.088 0.13 0 0.222 0.011 0.228 0.04 0.02 0.106 -1.305 0.247 -1.305 0.247l-0.79 -0.308c0.168 0.293 0.26 0.527 0.32 0.596 0.091 0.03 1.374 0.392 1.34 0.493 -0.004 0.012 -0.026 0.017 -0.063 0.017 -0.283 0 -1.41 -0.304 -1.41 -0.304l-0.248 -0.284 0.202 0.605c0.087 0.065 0.876 0.755 0.813 0.841 -0.004 0.005 -0.009 0.007 -0.016 0.007 -0.139 0 -0.967 -0.722 -0.967 -0.722l-0.481 -1.004a1.18 1.18 0 0 1 -0.154 0.058c0.193 0.982 0.451 2.422 0.656 3.992 0.335 2.569 0.26 5.261 0.054 5.77 -0.016 0.041 -0.042 0.06 -0.076 0.06M12 24C5.373 24 0 18.627 0 12S5.373 0 12 0s12 5.373 12 12 -5.373 12 -12 12m0 -22.153C6.393 1.847 1.847 6.393 1.847 12S6.393 22.153 12 22.153 22.153 17.607 22.153 12 17.607 1.847 12 1.847Z";
-      const svgViewboxSize = 24; 
-      const scale = renderSize / svgViewboxSize;
-      const translateX = centerX - renderSize / 2;
-      const translateY = centerY - renderSize / 2;
-      const basePath = new Path2D(svgPath);
-      const m = new DOMMatrix().translate(translateX, translateY).scale(scale, scale);
-      const transformedPath = new Path2D();
-      transformedPath.addPath(basePath, m);
-      ctx.fillStyle = color;
-      ctx.fill(transformedPath);
+      const svgViewboxSize = 24; const scale = renderSize / svgViewboxSize;
+      const translateX = centerX - renderSize / 2; const translateY = centerY - renderSize / 2;
+      const basePath = new Path2D(svgPath); const m = new DOMMatrix().translate(translateX, translateY).scale(scale, scale);
+      const transformedPath = new Path2D(); transformedPath.addPath(basePath, m);
+      ctx.fillStyle = color; ctx.fill(transformedPath);
     };
 
     const getResponsiveFontSize = (ctx, text, fontFamily, maxFontSize, maxWidth, minFontSize = 120) => {
@@ -243,8 +216,9 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
     };
 
     const renderCertificate = () => {
+      const centerX = canvas.width / 2;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const g = getGradient();
+      
       let certText = "";
       switch (currentTier) {
         case "Silver":
@@ -255,121 +229,132 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
           break;
         case "Bronze":
         default:
-          certText = "This certificate marks your official entry into the OWASP global ecosystem. Your initiative strengthens our collective defenses against relentless threats. We honor your commitment and welcome you to the frontline of cybersecurity.";
+          certText = "Recognizing valuable contributions that advanced the OWASP open source security mission, this certificate is awarded to Daniel Martinez for exceptional dedication to cybersecurity. Through innovative research, OWASP project participation, and knowledge sharing on vulnerabilities and secure coding, they have strengthened global defenses against cyber threats, exemplifying integrity and collaboration.";
           break;
       }
       
-      // حل مشکل فال‌بک تکست با اضافه کردن sans-serif
-      ctx.font = "300 75px Cabin, sans-serif"; 
-      const textLines = calculateLines(ctx, certText, 2100);
-      const startY = 1840;
-      const lineHeight = 110;
-      const paddingBottom = 10;
-      const dynamicRepoY = startY + (textLines * lineHeight) + paddingBottom;
+      // جایگذاری نام کاربر در متن دیفالت
+      const displayName = certUser.real_name ? capitalizeRegex(certUser.real_name) : (certUser.user || "UNKNOWN");
+      certText = certText.replace("Daniel Martinez", displayName);
       
-      ctx.globalAlpha = 0.25; 
+      // پس‌زمینه و پترن
+      ctx.fillStyle = "#11151c"; // رنگ بک‌گراند تیره شبیه عکس
+      ctx.fillRect(0, 0, 2480, 3508);
+      
+      ctx.globalAlpha = 0.4; 
       if (images.current.pattern.complete && images.current.pattern.naturalWidth !== 0) {
         ctx.drawImage(images.current.pattern, 0, 0, 2480, 3508);
       }
-      
       ctx.globalAlpha = 1;
-      if (images.current.sign.complete) {
-        // امضا دقیقاً چپ‌چین و بالای اسم تراز شد (X از 300 به 190 تغییر کرد)
-        ctx.drawImage(images.current.sign, 190, 2520, 440, 290);
-      }
-      
-      ctx.globalCompositeOperation = "source-atop";
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, 2480, 3508);
-      
-      ctx.globalCompositeOperation = "destination-over";
-      ctx.fillStyle = "#171c24";
-      ctx.fillRect(0, 0, 2480, 3508);
-      
-      ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = g;
-      ctx.strokeStyle = g;
-      ctx.lineWidth = 4;
-      ctx.beginPath(); 
-      if (ctx.roundRect) {
-        ctx.roundRect(460, 1000, 1070, 120, [100]); 
-      } else {
-        ctx.rect(460, 1000, 1070, 120);
-      }
-      ctx.stroke();
-      ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; 
-      
-      ctx.font = "400 70px Inter, sans-serif"; // نازک‌تر شد
-      let certYear = new Date().getFullYear();
-      if (certUser.stats?.first_commit_date) certYear = certUser.stats.first_commit_date.split('-')[0];
-      else if (certUser.first_commit) certYear = certUser.first_commit;
-      const certIdText = `CRT-OWASP-${certUser.id || "000"} : ${certYear}`;
-      ctx.fillText(certIdText, 460 + (1070 - ctx.measureText(certIdText).width) / 2, 1085);
-      
-      const displayName = certUser.real_name ? capitalizeRegex(certUser.real_name) : (certUser.user || "UNKNOWN");
-      const nameMaxWidth = 2100;
-      // تغییر فونت اسم از Anton زمخت به Inter نازک و شیک (وزن 300)
-      const nameFontSize = getResponsiveFontSize(ctx, displayName, "Inter", 260, nameMaxWidth);
-      ctx.font = `300 ${nameFontSize}px Inter, sans-serif`;
-      ctx.fillText(displayName, 190, 1680); 
-      
-      ctx.font = "italic 70px Cabin, sans-serif";
-      const projectCount = certUser.stats?.project_count || 1;
-      ctx.fillText(`${projectCount} ${projectCount === 1 ? 'Repository' : 'Repositories'}`, 190, dynamicRepoY); 
-      
-      // اسامی لیدرها با فونت متعادل‌تر
-      ctx.font = "600 80px Inter, sans-serif"; ctx.fillText("Meysam Bal-afkan", 190, 2850); ctx.fillText("Fatemeh Zahedi", 1510, 2850);
-      ctx.font = "300 50px Cabin, sans-serif"; ctx.fillText("OWASP-CRT Project Leader", 190, 2930); ctx.fillText("OWASP-CRT Project Co-Leader", 1510, 2930);
-      
-      generateQRCodeAdvanced({ color: g });
-      
-      ctx.fillStyle = "white"; 
-      ctx.font = "bold 200px 'Cascadia Mono', monospace"; ctx.fillText("CERTIFICATE", 330, 800);
-      ctx.font = "300 100px 'Cascadia Code', monospace"; ctx.fillText("OF CONTRIBUTION", 550, 900);
-      ctx.font = "200 70px Cabin, sans-serif"; ctx.fillText("PRESENTED TO", 640, 1400); 
 
-      let tierTitleLeft = "";
-      let tierTitleRight = "";
-      switch (currentTier) {
-        case "Silver":
-           tierTitleLeft = "// ADVANCED CONTRIBUTOR";
-           tierTitleRight = "// OFFICIALLY RECOGNIZED";
-           break;
-        case "Gold":
-           tierTitleLeft = "// ELITE CONTRIBUTOR";
-           tierTitleRight = "// OFFICIALLY RECOGNIZED";
-           break;
-        case "Bronze":
-        default:
-           tierTitleLeft = "// VERIFIED CONTRIBUTOR";
-           tierTitleRight = "// OFFICIALLY RECOGNIZED";
-           break;
-      }
-      
-      ctx.fillStyle = g; 
-      ctx.font = "400 70px Inter, sans-serif"; // نازک‌تر شد
-      ctx.fillText(`${tierTitleLeft}   ${tierTitleRight}`, 190, 1250);
-      
-      ctx.fillStyle = "white";
-      ctx.font = "300 75px Cabin, sans-serif"; 
-      drawJustifiedText(ctx, certText, 190, startY, 2100, lineHeight);
-
+      // رندر لوگو در مرکز بالا
       if (images.current.logo.complete) {
         const tempCanvas = document.createElement('canvas');
         const tWidth = images.current.logo.naturalWidth || 483;
         const tHeight = images.current.logo.naturalHeight || 145;
-        tempCanvas.width = tWidth;
-        tempCanvas.height = tHeight;
+        tempCanvas.width = tWidth; tempCanvas.height = tHeight;
         const tempCtx = tempCanvas.getContext('2d');
-        
         tempCtx.drawImage(images.current.logo, 0, 0, tWidth, tHeight);
-        
         tempCtx.globalCompositeOperation = 'source-in';
-        tempCtx.fillStyle = '#FFFFFF';
+        tempCtx.fillStyle = primaryBlue; // لوگو رنگ آبی
         tempCtx.fillRect(0, 0, tWidth, tHeight);
-        
-        ctx.drawImage(tempCanvas, 330, 415, 483, 145);
+        // وسط چین کردن لوگو
+        ctx.drawImage(tempCanvas, centerX - (483 / 2), 350, 483, 145);
       }
+
+      // متون هدر (وسط چین)
+      ctx.textAlign = "center";
+      ctx.fillStyle = "white"; 
+      ctx.font = "bold 220px Inter, sans-serif"; 
+      ctx.fillText("CERTIFICATE", centerX, 680);
+      
+      ctx.font = "300 100px Inter, sans-serif"; 
+      ctx.fillText("OF CONTRIBUTION", centerX, 810);
+
+      // نشانگر آیدی (Badge Pill)
+      let certYear = new Date().getFullYear();
+      if (certUser.stats?.first_commit_date) certYear = certUser.stats.first_commit_date.split('-')[0];
+      else if (certUser.first_commit) certYear = certUser.first_commit;
+      const certIdText = `CRT-OWASP-${certUser.id || "000"} : ${certYear}`;
+      
+      ctx.font = "400 65px Inter, sans-serif";
+      const badgeWidth = ctx.measureText(certIdText).width + 160;
+      const badgeHeight = 110;
+      
+      ctx.strokeStyle = primaryBlue;
+      ctx.lineWidth = 4;
+      ctx.beginPath(); 
+      if (ctx.roundRect) ctx.roundRect(centerX - (badgeWidth / 2), 920, badgeWidth, badgeHeight, [55]); 
+      else ctx.rect(centerX - (badgeWidth / 2), 920, badgeWidth, badgeHeight);
+      ctx.stroke();
+      
+      ctx.fillStyle = primaryBlue;
+      ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; 
+      
+      ctx.fillStyle = primaryBlue;
+      ctx.fillText(certIdText, centerX, 1000);
+
+      // تایتل‌های وریفای
+      let tierTitle = "// VERIFIED CONTRIBUTOR // VERIFIED CONTRIBUTOR";
+      if(currentTier === "Silver") tierTitle = "// ADVANCED CONTRIBUTOR // ADVANCED CONTRIBUTOR";
+      if(currentTier === "Gold") tierTitle = "// ELITE CONTRIBUTOR // ELITE CONTRIBUTOR";
+      
+      ctx.font = "400 60px Inter, sans-serif";
+      ctx.fillText(tierTitle, centerX, 1180);
+      
+      ctx.fillStyle = "white";
+      ctx.font = "300 75px Inter, sans-serif"; 
+      ctx.fillText("PRESENTED TO", centerX, 1310); 
+      
+      // نام کاربر (با فونت Anton و استایل عکس جدید)
+      const nameMaxWidth = 2100;
+      const nameFontSize = getResponsiveFontSize(ctx, displayName, "Anton", 340, nameMaxWidth);
+      ctx.font = `${nameFontSize}px Anton, sans-serif`;
+      ctx.fillStyle = primaryBlue;
+      ctx.fillText(displayName, centerX, 1600); 
+
+      // تنظیمات پاراگراف توضیحات
+      ctx.fillStyle = textGray;
+      ctx.font = "300 65px Inter, sans-serif"; 
+      const startY = 1780;
+      const lineHeight = 100;
+      // جاستیفای کشیدن متن، X:190 تا آخر کادر
+      drawJustifiedText(ctx, certText, 190, startY, 2100, lineHeight);
+
+      // تعداد ریپازیتوری
+      const textLines = calculateLines(ctx, certText, 2100);
+      const dynamicRepoY = startY + (textLines * lineHeight) + 60;
+      ctx.font = "italic 50px Inter, sans-serif";
+      ctx.fillStyle = primaryBlue;
+      const projectCount = certUser.stats?.project_count || 1;
+      ctx.textAlign = "left";
+      ctx.fillText(`+${projectCount} ${projectCount === 1 ? 'Repository' : 'Repositories'}`, 190, dynamicRepoY); 
+
+      // امضا
+      if (images.current.sign.complete) {
+        ctx.drawImage(images.current.sign, 190, 2450, 440, 290);
+      }
+      
+      // اطلاعات پایین (لیدرها)
+      ctx.font = "bold 70px Inter, sans-serif"; 
+      ctx.fillStyle = primaryBlue;
+      ctx.textAlign = "left";
+      ctx.fillText("Meysam Bal-afkan", 190, 2850); 
+      
+      ctx.textAlign = "right";
+      ctx.fillText("Fatemeh Zahedi", 2290, 2850);
+      
+      ctx.font = "300 45px Inter, sans-serif"; 
+      ctx.fillStyle = "#6b7280"; // رنگ طوسی ملایم برای تایتل لیدرها
+      ctx.textAlign = "left";
+      ctx.fillText("OWASP-CRT Project Leader", 190, 2920); 
+      
+      ctx.textAlign = "right";
+      ctx.fillText("OWASP-CRT Project Co-Leader", 2290, 2920);
+      
+      // QR Code در پایین سمت چپ
+      ctx.textAlign = "left";
+      generateQRCodeAdvanced({ color: primaryBlue });
       
       const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
       setPreviewImage(dataUrl);
@@ -382,15 +367,17 @@ const CertificateViewer = ({ certId, isMaximized, setTelemetryData }) => {
       loadedImages++;
       if (loadedImages === totalImages) {
         try {
-          // تطابق وزن فونت‌ها برای لودینگ دقیق قبل از رندر
+          // اجبار دانلود فونت‌های جدید با سایز و استایل دقیق
           await Promise.all([
-            document.fonts.load('300 260px Inter'),
-            document.fonts.load('300 75px Cabin'),
-            document.fonts.load('italic 70px Cabin'),
-            document.fonts.load('400 70px Inter'),
-            document.fonts.load('600 80px Inter'),
-            document.fonts.load('bold 200px "Cascadia Mono"'),
-            document.fonts.load('300 100px "Cascadia Code"')
+            document.fonts.load('340px Anton'),
+            document.fonts.load('bold 220px Inter'),
+            document.fonts.load('300 100px Inter'),
+            document.fonts.load('400 65px Inter'),
+            document.fonts.load('300 75px Inter'),
+            document.fonts.load('300 65px Inter'),
+            document.fonts.load('italic 50px Inter'),
+            document.fonts.load('bold 70px Inter'),
+            document.fonts.load('300 45px Inter')
           ]);
           
           setTimeout(() => {
