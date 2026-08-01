@@ -1,9 +1,9 @@
 export const APP_CONFIG = {
   github: {
-    owner: "OWASP",
-    repo: "OWASP-CRT",
+    owner: "DylanZahedi",
+    repo: "test",
     branch: "data", // Branch where JSON certificates are stored
   },
-  domain: "https://crt.owasp.org",
+  domain: "https://github.com/DylanZahedi/test",
   assetsPath: "/assets", // Assets load from root due to custom domain
 };
